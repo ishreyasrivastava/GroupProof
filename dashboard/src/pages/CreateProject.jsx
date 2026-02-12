@@ -1,108 +1,258 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { FiArrowLeft, FiCheck, FiLoader, FiExternalLink, FiAlertTriangle } from 'react-icons/fi';
-import { useWallet } from '../hooks/useWallet';
-import { getContract, getExplorerUrl } from '../utils/contract';
+import { 
+  FiArrowLeft, 
+  FiCheck, 
+  FiLoader, 
+  FiExternalLink, 
+  FiAlertTriangle,
+  FiAlertCircle,
+  FiInfo,
+  FiCopy,
+  FiTerminal,
+  FiUsers,
+  FiGitBranch,
+  FiShield,
+} from 'react-icons/fi';
+import { useWallet, useTransaction } from '../hooks/useWallet';
+import { 
+  getContract, 
+  validateProjectName, 
+  parseContractError,
+  getExplorerTxUrl,
+  isContractConfigured,
+} from '../utils/contract';
+
+// Transaction states UI
+const TxStateDisplay = ({ status, hash, error, confirmations }) => {
+  if (status === 'idle') return null;
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={status}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        className={`rounded-xl p-4 ${
+          status === 'pending' ? 'tx-pending' :
+          status === 'confirming' ? 'tx-pending' :
+          status === 'success' ? 'tx-success' :
+          'tx-error'
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {/* Icon */}
+          <div className={`p-2 rounded-lg ${
+            status === 'pending' || status === 'confirming' ? 'bg-amber-500/20' :
+            status === 'success' ? 'bg-emerald-500/20' : 'bg-red-500/20'
+          }`}>
+            {(status === 'pending' || status === 'confirming') && (
+              <FiLoader className="text-amber-400 animate-spin" />
+            )}
+            {status === 'success' && <FiCheck className="text-emerald-400" />}
+            {status === 'error' && <FiAlertCircle className="text-red-400" />}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <p className={`font-medium ${
+              status === 'pending' || status === 'confirming' ? 'text-amber-300' :
+              status === 'success' ? 'text-emerald-300' : 'text-red-300'
+            }`}>
+              {status === 'pending' && 'Waiting for signature...'}
+              {status === 'confirming' && 'Confirming transaction...'}
+              {status === 'success' && 'Project created successfully!'}
+              {status === 'error' && 'Transaction failed'}
+            </p>
+            
+            {hash && (
+              <a
+                href={getExplorerTxUrl(hash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-zinc-400 hover:text-white flex items-center gap-1 mt-1"
+              >
+                View on PolygonScan
+                <FiExternalLink className="text-xs" />
+              </a>
+            )}
+            
+            {error && (
+              <p className="text-sm text-red-300/80 mt-1">{error}</p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 export default function CreateProject() {
   const navigate = useNavigate();
-  const { account, signer, isConnected, connectWallet, balance } = useWallet();
+  const { 
+    account, 
+    signer, 
+    isConnected, 
+    isWrongNetwork,
+    isLowBalance,
+    balance,
+    connectWallet,
+    switchToAmoy,
+    isMetaMaskInstalled,
+  } = useWallet();
+  
+  const tx = useTransaction();
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
   });
-  const [creating, setCreating] = useState(false);
-  const [txHash, setTxHash] = useState(null);
-  const [error, setError] = useState(null);
+  const [validationError, setValidationError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Validate on input change
+  useEffect(() => {
+    if (formData.name) {
+      const validation = validateProjectName(formData.name);
+      setValidationError(validation.valid ? null : validation.error);
+    } else {
+      setValidationError(null);
+    }
+  }, [formData.name]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name.trim()) {
-      setError('Project name is required');
+    // Validation
+    const validation = validateProjectName(formData.name);
+    if (!validation.valid) {
+      setValidationError(validation.error);
       return;
     }
 
-    if (formData.name.length > 100) {
-      setError('Project name must be 100 characters or less');
-      return;
-    }
-
-    if (parseFloat(balance) < 0.01) {
-      setError('Insufficient MATIC balance. Get testnet tokens from faucet.polygon.technology');
-      return;
-    }
-
-    setCreating(true);
-    setError(null);
-    setTxHash(null);
+    setIsSubmitting(true);
+    tx.resetTx();
 
     try {
       const contract = getContract(signer);
       
-      // Send transaction
-      const tx = await contract.createProject(
+      // Create the transaction
+      const txPromise = contract.createProject(
         formData.name.trim(),
         formData.description.trim()
       );
-      
-      setTxHash(tx.hash);
-      toast.loading('Waiting for confirmation...', { id: 'create' });
-      
-      // Wait for confirmation
-      const receipt = await tx.wait();
-      
-      // Get project ID from event
-      const event = receipt.logs.find(log => {
-        try {
-          const parsed = contract.interface.parseLog(log);
-          return parsed.name === 'ProjectCreated';
-        } catch { return false; }
+
+      const receipt = await tx.sendTransaction(txPromise, {
+        confirmations: 1,
+        onSubmit: () => {
+          // Transaction submitted
+        },
+        onConfirm: (receipt) => {
+          // Find project ID from event
+          const event = receipt.logs.find(log => {
+            try {
+              const parsed = contract.interface.parseLog(log);
+              return parsed.name === 'ProjectCreated';
+            } catch { return false; }
+          });
+          
+          const projectId = event ? contract.interface.parseLog(event).args[0] : null;
+          
+          if (projectId) {
+            // Small delay then navigate
+            setTimeout(() => {
+              navigate(`/project/${projectId}`);
+            }, 1500);
+          } else {
+            navigate('/my-projects');
+          }
+        },
+        onError: (err) => {
+          const parsed = parseContractError(err);
+          console.error('Create project error:', parsed);
+        },
       });
-      
-      const projectId = event ? contract.interface.parseLog(event).args[0] : null;
-      
-      toast.success('Project created successfully!', { id: 'create' });
-      
-      // Navigate to project page
-      if (projectId) {
-        navigate(`/project/${projectId}`);
-      } else {
-        navigate('/my-projects');
-      }
+
     } catch (err) {
-      console.error('Error creating project:', err);
-      setError(err.message || 'Failed to create project');
-      toast.error('Failed to create project', { id: 'create' });
+      const parsed = parseContractError(err);
+      toast.error(parsed.message);
     } finally {
-      setCreating(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (!isConnected) {
+  // Not connected state
+  if (!isMetaMaskInstalled) {
     return (
-      <div className="max-w-lg mx-auto text-center py-12">
-        <motion.div
+      <div className="max-w-lg mx-auto py-12">
+        <Link 
+          to="/" 
+          className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
+        >
+          <FiArrowLeft />
+          Back
+        </Link>
+        
+        <motion.div 
+          className="card text-center py-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="text-6xl mb-6">🔐</div>
-          <h1 className="text-2xl font-bold mb-4">Connect Your Wallet</h1>
-          <p className="text-slate-400 mb-8">
-            You need to connect your wallet to create a project on the blockchain.
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+            <FiAlertTriangle className="text-3xl text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-bold mb-3">MetaMask Required</h1>
+          <p className="text-zinc-400 mb-6 max-w-sm mx-auto">
+            You need MetaMask to create projects on GroupProof. It's free and takes a minute to set up.
+          </p>
+          <a
+            href="https://metamask.io/download/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary btn-md"
+          >
+            <FiExternalLink />
+            Install MetaMask
+          </a>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="max-w-lg mx-auto py-12">
+        <Link 
+          to="/" 
+          className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
+        >
+          <FiArrowLeft />
+          Back
+        </Link>
+        
+        <motion.div 
+          className="card text-center py-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="w-16 h-16 rounded-2xl bg-polygon-purple/10 flex items-center justify-center mx-auto mb-4">
+            <FiShield className="text-3xl text-purple-400" />
+          </div>
+          <h1 className="text-2xl font-bold mb-3">Connect Your Wallet</h1>
+          <p className="text-zinc-400 mb-6 max-w-sm mx-auto">
+            Connect your wallet to create a project on the Polygon blockchain.
           </p>
           <button
             onClick={() => connectWallet()}
-            className="btn btn-primary px-8 py-3"
+            className="btn btn-primary btn-md"
           >
             Connect Wallet
           </button>
@@ -112,30 +262,65 @@ export default function CreateProject() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto py-4">
       {/* Back Link */}
       <Link 
         to="/" 
-        className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
+        className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-6"
       >
         <FiArrowLeft />
         Back
       </Link>
 
       <motion.div
-        className="glass rounded-2xl p-6 sm:p-8"
+        className="card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Create New Project</h1>
-        <p className="text-slate-400 mb-8">
+        <h1 className="text-2xl font-bold mb-2">Create New Project</h1>
+        <p className="text-zinc-400 mb-8">
           Start tracking contributions for your group project on the blockchain.
         </p>
+
+        {/* Network warning */}
+        {isWrongNetwork && (
+          <div className="warning-banner mb-6">
+            <FiAlertTriangle className="text-xl flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium">Wrong Network</p>
+              <p className="text-sm opacity-80">Please switch to Polygon Amoy testnet</p>
+            </div>
+            <button onClick={switchToAmoy} className="btn btn-sm bg-amber-500/20 hover:bg-amber-500/30">
+              Switch Network
+            </button>
+          </div>
+        )}
+
+        {/* Low balance warning */}
+        {isLowBalance && !isWrongNetwork && (
+          <div className="warning-banner mb-6">
+            <FiAlertTriangle className="text-xl flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium">Low Balance</p>
+              <p className="text-sm opacity-80">
+                You have {parseFloat(balance).toFixed(4)} MATIC. You may need more for gas fees.
+              </p>
+            </div>
+            <a 
+              href="https://faucet.polygon.technology/" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-sm bg-amber-500/20 hover:bg-amber-500/30"
+            >
+              Get MATIC
+            </a>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Project Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-2">
+            <label htmlFor="name" className="block text-sm font-medium text-zinc-300 mb-2">
               Project Name <span className="text-red-400">*</span>
             </label>
             <input
@@ -145,18 +330,26 @@ export default function CreateProject() {
               value={formData.name}
               onChange={handleChange}
               placeholder="e.g., Final Year Project"
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:border-polygon-purple focus:ring-1 focus:ring-polygon-purple outline-none transition-colors"
+              className={`input ${validationError ? 'input-error' : ''}`}
               maxLength={100}
-              disabled={creating}
+              disabled={isSubmitting || tx.isPending || tx.isConfirming}
+              autoFocus
             />
-            <p className="text-xs text-slate-500 mt-1">
-              {formData.name.length}/100 characters
-            </p>
+            <div className="flex justify-between mt-1.5">
+              {validationError ? (
+                <p className="text-xs text-red-400">{validationError}</p>
+              ) : (
+                <p className="text-xs text-zinc-500">Choose a descriptive name</p>
+              )}
+              <p className={`text-xs ${formData.name.length > 90 ? 'text-amber-400' : 'text-zinc-500'}`}>
+                {formData.name.length}/100
+              </p>
+            </div>
           </div>
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium mb-2">
+            <label htmlFor="description" className="block text-sm font-medium text-zinc-300 mb-2">
               Description
             </label>
             <textarea
@@ -165,77 +358,53 @@ export default function CreateProject() {
               value={formData.description}
               onChange={handleChange}
               placeholder="Brief description of your project..."
-              rows={4}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:border-polygon-purple focus:ring-1 focus:ring-polygon-purple outline-none transition-colors resize-none"
-              disabled={creating}
+              rows={3}
+              className="input resize-none"
+              disabled={isSubmitting || tx.isPending || tx.isConfirming}
             />
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
-              <FiAlertTriangle className="text-xl flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">Error</p>
-                <p className="text-sm">{error}</p>
-                {error.includes('Insufficient') && (
-                  <a 
-                    href="https://faucet.polygon.technology/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-polygon-light hover:underline flex items-center gap-1 mt-2"
-                  >
-                    Get free testnet MATIC <FiExternalLink />
-                  </a>
-                )}
+          {/* Transaction state display */}
+          <TxStateDisplay {...tx} />
+
+          {/* Info box */}
+          {!tx.isPending && !tx.isConfirming && !tx.isSuccess && (
+            <div className="info-banner">
+              <FiInfo className="text-xl flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium mb-1">Creating a project on the blockchain</p>
+                <p className="opacity-80">
+                  This will deploy your project to Polygon Amoy testnet. 
+                  You'll need to confirm the transaction in MetaMask. 
+                  Gas fees are minimal (~0.001 MATIC).
+                </p>
               </div>
             </div>
           )}
-
-          {/* Transaction Status */}
-          {txHash && (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-              <FiLoader className="text-xl text-blue-400 animate-spin" />
-              <div>
-                <p className="font-medium text-blue-400">Transaction Pending</p>
-                <a 
-                  href={getExplorerUrl(txHash)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-slate-400 hover:text-white flex items-center gap-1"
-                >
-                  View on PolygonScan <FiExternalLink />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Info */}
-          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-            <p className="text-sm text-slate-400">
-              <strong className="text-white">Note:</strong> Creating a project requires a small amount of MATIC for gas fees. 
-              Make sure you have testnet MATIC from{' '}
-              <a 
-                href="https://faucet.polygon.technology/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-polygon-light hover:underline"
-              >
-                faucet.polygon.technology
-              </a>
-            </p>
-          </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={creating || !formData.name.trim()}
-            className="w-full btn btn-primary py-4 text-lg flex items-center justify-center gap-2"
+            disabled={
+              !formData.name.trim() || 
+              validationError || 
+              isSubmitting || 
+              tx.isPending || 
+              tx.isConfirming ||
+              tx.isSuccess ||
+              isWrongNetwork
+            }
+            className="w-full btn btn-primary btn-lg justify-center"
           >
-            {creating ? (
+            {tx.isPending || tx.isConfirming ? (
               <>
                 <FiLoader className="animate-spin" />
-                Creating Project...
+                {tx.isPending ? 'Waiting for signature...' : 'Confirming...'}
+              </>
+            ) : tx.isSuccess ? (
+              <>
+                <FiCheck />
+                Project Created!
               </>
             ) : (
               <>
@@ -246,28 +415,32 @@ export default function CreateProject() {
           </button>
         </form>
 
-        {/* What's Next */}
-        <div className="mt-8 pt-8 border-t border-slate-700">
-          <h3 className="font-semibold mb-4">After creating your project:</h3>
-          <ol className="space-y-3 text-sm text-slate-400">
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-polygon-purple/20 text-polygon-light flex items-center justify-center flex-shrink-0 text-xs font-bold">1</span>
-              <span>Install the CLI: <code className="hash">npm i -g groupproof-cli</code></span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-polygon-purple/20 text-polygon-light flex items-center justify-center flex-shrink-0 text-xs font-bold">2</span>
-              <span>Initialize in your repo: <code className="hash">groupproof init</code></span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-polygon-purple/20 text-polygon-light flex items-center justify-center flex-shrink-0 text-xs font-bold">3</span>
-              <span>Share <code className="hash">.groupproof.json</code> with your team</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-polygon-purple/20 text-polygon-light flex items-center justify-center flex-shrink-0 text-xs font-bold">4</span>
-              <span>Team members run <code className="hash">groupproof join</code> with their wallets</span>
-            </li>
-          </ol>
-        </div>
+        {/* Next Steps */}
+        {!tx.isSuccess && (
+          <div className="mt-10 pt-8 border-t border-white/10">
+            <h3 className="font-semibold text-zinc-300 mb-4">After creating your project:</h3>
+            <div className="space-y-4">
+              {[
+                { icon: FiTerminal, text: 'Install the CLI', code: 'npm i -g groupproof-cli' },
+                { icon: FiGitBranch, text: 'Initialize in your repo', code: 'groupproof init' },
+                { icon: FiCopy, text: 'Share config with team', code: '.groupproof.json' },
+                { icon: FiUsers, text: 'Team members join', code: 'groupproof join' },
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-polygon-purple/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-purple-400">{i + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-zinc-300">{step.text}</p>
+                    <code className="text-xs text-purple-300 bg-polygon-purple/10 px-2 py-0.5 rounded mt-1 inline-block">
+                      {step.code}
+                    </code>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );

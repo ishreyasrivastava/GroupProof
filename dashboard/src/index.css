@@ -2,6 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   GROUPPROOF - PREMIUM DESIGN SYSTEM
+   Inspired by Linear, Notion, Vercel
+   ======================================== */
+
+:root {
+  /* Core palette */
+  --color-bg-primary: #0a0a0b;
+  --color-bg-secondary: #111113;
+  --color-bg-tertiary: #18181b;
+  --color-bg-elevated: #1c1c1f;
+  --color-bg-hover: #232326;
+  
+  /* Polygon brand */
+  --color-polygon-primary: #8247e5;
+  --color-polygon-light: #a855f7;
+  --color-polygon-glow: rgba(130, 71, 229, 0.15);
+  
+  /* Semantic colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+  
+  /* Text colors */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #71717a;
+  --color-text-muted: #52525b;
+  
+  /* Border colors */
+  --color-border-default: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.1);
+  --color-border-focus: rgba(130, 71, 229, 0.5);
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 40px -10px rgba(130, 71, 229, 0.4);
+  
+  /* Timing */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,118 +59,494 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
   min-height: 100vh;
-  color: #f8fafc;
+  line-height: 1.6;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* Custom scrollbar */
+/* Premium background with subtle grain */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(130, 71, 229, 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(59, 130, 246, 0.08), transparent);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ========================================
+   SCROLLBAR - Minimal & Clean
+   ======================================== */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 4px;
+  background: var(--color-text-muted);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--color-text-tertiary);
 }
 
-/* Glass effect */
-.glass {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+/* ========================================
+   SELECTION
+   ======================================== */
+::selection {
+  background: rgba(130, 71, 229, 0.3);
+  color: var(--color-text-primary);
 }
 
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #8247E5, #A379FF, #38bdf8);
+/* ========================================
+   FOCUS STATES - Accessible & Beautiful
+   ======================================== */
+:focus-visible {
+  outline: 2px solid var(--color-polygon-primary);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+.text-gradient {
+  background: linear-gradient(135deg, #8247e5, #a855f7, #ec4899);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Animated gradient background */
-.gradient-bg {
-  background: linear-gradient(-45deg, #8247E5, #A379FF, #0ea5e9, #8247E5);
-  background-size: 400% 400%;
-  animation: gradient 15s ease infinite;
+.text-gradient-blue {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-@keyframes gradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* ========================================
+   GLASS MORPHISM
+   ======================================== */
+.glass {
+  background: rgba(17, 17, 19, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-default);
 }
 
-/* Pulse animation for status indicators */
-.pulse-green {
-  animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.glass-light {
+  background: rgba(24, 24, 27, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-default);
 }
 
-@keyframes pulse-green {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+.glass-elevated {
+  background: rgba(28, 28, 31, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--color-border-hover);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Card hover effect */
-.card-hover {
-  transition: all 0.3s ease;
+/* ========================================
+   CARDS - Premium Feel
+   ======================================== */
+.card {
+  @apply glass rounded-2xl p-6 transition-all duration-200;
 }
 
-.card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -12px rgba(130, 71, 229, 0.25);
+.card-interactive {
+  @apply card cursor-pointer;
 }
 
-/* Responsive table */
-.table-container {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+.card-interactive:hover {
+  background: rgba(24, 24, 27, 0.8);
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
-/* Code/hash styling */
-.hash {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.85em;
-  background: rgba(130, 71, 229, 0.1);
-  padding: 0.2em 0.5em;
-  border-radius: 6px;
-  color: #a379ff;
+.card-interactive:active {
+  transform: translateY(0);
 }
 
-/* Button base styles */
+/* ========================================
+   BUTTONS - Polished & Responsive
+   ======================================== */
 .btn {
-  @apply px-4 py-2 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.btn-md {
+  @apply px-4 py-2.5 text-sm;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-base;
 }
 
 .btn-primary {
-  @apply bg-gradient-to-r from-polygon-purple to-polygon-light text-white hover:shadow-lg hover:shadow-polygon-purple/30;
+  @apply bg-gradient-to-r from-polygon-purple to-purple-500 text-white;
+  box-shadow: 0 0 20px -5px rgba(130, 71, 229, 0.5);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 30px -5px rgba(130, 71, 229, 0.7);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-secondary {
-  @apply bg-slate-700 text-white hover:bg-slate-600;
+  @apply bg-white/5 text-white border border-white/10;
 }
 
-/* Loading skeleton */
+.btn-secondary:hover:not(:disabled) {
+  @apply bg-white/10 border-white/20;
+}
+
+.btn-ghost {
+  @apply bg-transparent text-zinc-400;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  @apply bg-white/5 text-white;
+}
+
+.btn-danger {
+  @apply bg-red-500/10 text-red-400 border border-red-500/20;
+}
+
+.btn-danger:hover:not(:disabled) {
+  @apply bg-red-500/20 border-red-500/30;
+}
+
+/* ========================================
+   INPUTS - Clean & Focused
+   ======================================== */
+.input {
+  @apply w-full px-4 py-3 rounded-xl text-white placeholder-zinc-500;
+  @apply bg-white/5 border border-white/10;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:border-polygon-purple/50 focus:ring-2 focus:ring-polygon-purple/20;
+}
+
+.input:hover:not(:focus) {
+  @apply border-white/20;
+}
+
+.input-error {
+  @apply border-red-500/50 focus:border-red-500 focus:ring-red-500/20;
+}
+
+/* ========================================
+   BADGES & TAGS
+   ======================================== */
+.badge {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+}
+
+.badge-warning {
+  @apply bg-amber-500/10 text-amber-400 border border-amber-500/20;
+}
+
+.badge-error {
+  @apply bg-red-500/10 text-red-400 border border-red-500/20;
+}
+
+.badge-info {
+  @apply bg-blue-500/10 text-blue-400 border border-blue-500/20;
+}
+
+.badge-neutral {
+  @apply bg-zinc-500/10 text-zinc-400 border border-zinc-500/20;
+}
+
+.badge-polygon {
+  @apply bg-polygon-purple/10 text-purple-400 border border-polygon-purple/20;
+}
+
+/* ========================================
+   HASH/CODE STYLING
+   ======================================== */
+.hash {
+  @apply font-mono text-sm px-2 py-0.5 rounded-md;
+  @apply bg-polygon-purple/10 text-purple-300;
+}
+
+.code {
+  @apply font-mono text-sm px-3 py-2 rounded-lg;
+  @apply bg-black/40 text-zinc-300 border border-white/5;
+}
+
+/* ========================================
+   LOADING STATES
+   ======================================== */
 .skeleton {
-  @apply bg-slate-700 animate-pulse rounded;
+  @apply bg-gradient-to-r from-zinc-800 via-zinc-700 to-zinc-800;
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
-/* Stat card */
-.stat-card {
-  @apply glass rounded-2xl p-6 card-hover;
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
+
+.spinner {
+  @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   PULSE ANIMATION
+   ======================================== */
+.pulse-dot {
+  @apply relative;
+}
+
+.pulse-dot::after {
+  content: '';
+  @apply absolute inset-0 rounded-full;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0.6;
+  }
+  50% { 
+    box-shadow: 0 0 0 8px currentColor;
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   TRANSACTION STATES
+   ======================================== */
+.tx-pending {
+  @apply border-l-4 border-l-amber-500 bg-amber-500/5;
+}
+
+.tx-success {
+  @apply border-l-4 border-l-emerald-500 bg-emerald-500/5;
+}
+
+.tx-error {
+  @apply border-l-4 border-l-red-500 bg-red-500/5;
+}
+
+/* ========================================
+   WALLET CONNECTION STATES
+   ======================================== */
+.wallet-connected {
+  @apply bg-emerald-500/10 border border-emerald-500/20;
+}
+
+.wallet-disconnected {
+  @apply bg-zinc-800/50 border border-zinc-700;
+}
+
+.wallet-wrong-network {
+  @apply bg-amber-500/10 border border-amber-500/20;
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 641px) {
+  .show-mobile-only {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   STAT CARDS
+   ======================================== */
+.stat-card {
+  @apply glass rounded-2xl p-5 transition-all duration-200;
+}
+
+.stat-card:hover {
+  @apply border-white/10;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   TABLE STYLING
+   ======================================== */
+.table-container {
+  @apply overflow-x-auto -mx-6 px-6;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ========================================
+   EMPTY STATES
+   ======================================== */
+.empty-state {
+  @apply flex flex-col items-center justify-center py-16 text-center;
+}
+
+.empty-state-icon {
+  @apply w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mb-4;
+}
+
+/* ========================================
+   ERROR STATES
+   ======================================== */
+.error-banner {
+  @apply flex items-start gap-3 p-4 rounded-xl;
+  @apply bg-red-500/10 border border-red-500/20 text-red-400;
+}
+
+.warning-banner {
+  @apply flex items-start gap-3 p-4 rounded-xl;
+  @apply bg-amber-500/10 border border-amber-500/20 text-amber-400;
+}
+
+.info-banner {
+  @apply flex items-start gap-3 p-4 rounded-xl;
+  @apply bg-blue-500/10 border border-blue-500/20 text-blue-400;
+}
+
+.success-banner {
+  @apply flex items-start gap-3 p-4 rounded-xl;
+  @apply bg-emerald-500/10 border border-emerald-500/20 text-emerald-400;
+}
+
+/* ========================================
+   NETWORK INDICATOR
+   ======================================== */
+.network-indicator {
+  @apply flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium;
+}
+
+.network-amoy {
+  @apply bg-purple-500/10 text-purple-400 border border-purple-500/20;
+}
+
+.network-wrong {
+  @apply bg-red-500/10 text-red-400 border border-red-500/20;
+}
+
+/* ========================================
+   TOOLTIP
+   ======================================== */
+.tooltip {
+  @apply relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  @apply absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1;
+  @apply bg-zinc-900 text-white text-xs rounded-lg whitespace-nowrap;
+  @apply opacity-0 invisible transition-all duration-150;
+  @apply border border-zinc-700;
+}
+
+.tooltip:hover::after {
+  @apply opacity-100 visible;
+}
+
+/* ========================================
+   ANIMATIONS - Premium Feel
+   ======================================== */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from { 
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+/* ========================================
+   STAGGER ANIMATION DELAYS
+   ======================================== */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
