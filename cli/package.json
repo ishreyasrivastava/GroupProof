@@ -1,0 +1,24 @@
+{
+  "name": "groupproof-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for GroupProof - Record git commits to blockchain",
+  "main": "index.js",
+  "bin": {
+    "groupproof": "./bin/groupproof.js"
+  },
+  "scripts": {
+    "start": "node bin/groupproof.js",
+    "install-hook": "node bin/groupproof.js install"
+  },
+  "keywords": ["git", "blockchain", "polygon", "contribution", "proof"],
+  "author": "Shreya Srivastava",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.9.2",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1"
+  }
+}
