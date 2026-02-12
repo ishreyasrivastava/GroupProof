@@ -1,43 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiPlus, FiFolder } from 'react-icons/fi';
+import { FiPlus, FiFolder, FiRefreshCw, FiAlertCircle, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import ProjectCard, { ProjectCardSkeleton } from '../components/ProjectCard';
-import { getReadOnlyContract, parseProject } from '../utils/contract';
+import { getReadOnlyContract, parseProject, withRetry, isContractConfigured } from '../utils/contract';
 import { useWallet } from '../hooks/useWallet';
 
 export default function MyProjects() {
-  const { account, isConnected, connectWallet } = useWallet();
+  const { account, isConnected, connectWallet, isMetaMaskInstalled } = useWallet();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (account) {
-      loadUserProjects();
-    } else {
-      setLoading(false);
-    }
-  }, [account]);
-
-  const loadUserProjects = async () => {
+  const loadUserProjects = useCallback(async () => {
+    if (!account) return;
+    
     setLoading(true);
+    setError(null);
+    
     try {
       const contract = getReadOnlyContract();
       
       // Get user's project IDs
-      const projectIds = await contract.getUserProjects(account);
+      const projectIds = await withRetry(() => contract.getUserProjects(account));
       
       if (projectIds.length === 0) {
         setProjects([]);
         return;
       }
 
-      // Load project details
+      // Load project details in parallel
       const projectsData = await Promise.all(
         projectIds.map(async (id) => {
           try {
-            const data = await contract.getProject(id);
+            const data = await withRetry(() => contract.getProject(id));
             return parseProject(id, data);
           } catch (err) {
             console.error('Error loading project:', id, err);
@@ -49,29 +46,66 @@ export default function MyProjects() {
       setProjects(projectsData.filter(Boolean).reverse());
     } catch (err) {
       console.error('Error loading user projects:', err);
-      toast.error('Failed to load your projects');
+      setError('Failed to load your projects. Please try again.');
+      toast.error('Failed to load projects');
     } finally {
       setLoading(false);
     }
-  };
+  }, [account]);
 
-  if (!isConnected) {
+  useEffect(() => {
+    if (account && isContractConfigured()) {
+      loadUserProjects();
+    } else {
+      setLoading(false);
+    }
+  }, [account, loadUserProjects]);
+
+  // Not connected state
+  if (!isMetaMaskInstalled) {
     return (
-      <div className="max-w-lg mx-auto text-center py-12">
+      <div className="max-w-lg mx-auto py-16 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-polygon-purple/20 flex items-center justify-center">
-            <FiFolder className="text-4xl text-polygon-light" />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+            <FiAlertCircle className="text-4xl text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-bold mb-4">MetaMask Required</h1>
+          <p className="text-zinc-400 mb-8">
+            Install MetaMask to view your projects and contributions.
+          </p>
+          <a
+            href="https://metamask.io/download/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary btn-md"
+          >
+            Install MetaMask
+          </a>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="max-w-lg mx-auto py-16 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-polygon-purple/10 flex items-center justify-center">
+            <FiShield className="text-4xl text-purple-400" />
           </div>
           <h1 className="text-2xl font-bold mb-4">Connect Your Wallet</h1>
-          <p className="text-slate-400 mb-8">
+          <p className="text-zinc-400 mb-8">
             Connect your wallet to view the projects you've created or contributed to.
           </p>
           <button
             onClick={() => connectWallet()}
-            className="btn btn-primary px-8 py-3"
+            className="btn btn-primary btn-md"
           >
             Connect Wallet
           </button>
@@ -80,82 +114,119 @@ export default function MyProjects() {
     );
   }
 
+  // Calculate stats
+  const stats = {
+    total: projects.length,
+    active: projects.filter(p => p.isActive).length,
+    totalCommits: projects.reduce((sum, p) => sum + p.commitCount, 0),
+    totalContributors: projects.reduce((sum, p) => sum + p.contributorCount, 0),
+  };
+
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto py-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">My Projects</h1>
-          <p className="text-slate-400 mt-1">Projects you've created or contributed to</p>
+          <p className="text-zinc-400 mt-1">Projects you've created or contributed to</p>
         </div>
-        <Link to="/create" className="btn btn-primary flex items-center gap-2">
-          <FiPlus />
-          <span className="hidden sm:inline">New Project</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadUserProjects}
+            className="btn btn-secondary btn-md"
+            disabled={loading}
+          >
+            <FiRefreshCw className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <Link to="/create" className="btn btn-primary btn-md">
+            <FiPlus />
+            <span className="hidden sm:inline">New Project</span>
+            <span className="sm:hidden">New</span>
+          </Link>
+        </div>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <motion.div 
+          className="error-banner mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <FiAlertCircle className="text-xl flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium">Error loading projects</p>
+            <p className="text-sm opacity-80">{error}</p>
+          </div>
+          <button onClick={loadUserProjects} className="btn btn-sm bg-red-500/20 hover:bg-red-500/30">
+            <FiRefreshCw />
+            Retry
+          </button>
+        </motion.div>
+      )}
 
       {/* Projects Grid */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
         </div>
       ) : projects.length > 0 ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project, index) => (
-            <ProjectCard key={project.id} project={project} index={index} />
-          ))}
-        </div>
+        <>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project, index) => (
+              <ProjectCard key={project.id} project={project} index={index} />
+            ))}
+          </div>
+
+          {/* Stats Summary */}
+          <motion.div 
+            className="card mt-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h2 className="text-lg font-semibold mb-4">Quick Stats</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center p-4 rounded-xl bg-white/5">
+                <div className="text-2xl font-bold text-purple-400">{stats.total}</div>
+                <div className="text-xs text-zinc-500 mt-1">Total Projects</div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-white/5">
+                <div className="text-2xl font-bold text-emerald-400">{stats.active}</div>
+                <div className="text-xs text-zinc-500 mt-1">Active</div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-white/5">
+                <div className="text-2xl font-bold text-blue-400">{stats.totalCommits}</div>
+                <div className="text-xs text-zinc-500 mt-1">Total Commits</div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-white/5">
+                <div className="text-2xl font-bold text-amber-400">{stats.totalContributors}</div>
+                <div className="text-xs text-zinc-500 mt-1">Total Contributors</div>
+              </div>
+            </div>
+          </motion.div>
+        </>
       ) : (
         <motion.div
-          className="glass rounded-2xl p-12 text-center"
+          className="card py-16 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-800 flex items-center justify-center">
-            <FiFolder className="text-4xl text-slate-500" />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-zinc-800 flex items-center justify-center">
+            <FiFolder className="text-4xl text-zinc-600" />
           </div>
           <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
-          <p className="text-slate-400 mb-6">
+          <p className="text-zinc-400 mb-8 max-w-sm mx-auto">
             Create your first project to start tracking contributions on the blockchain.
           </p>
-          <Link to="/create" className="btn btn-primary inline-flex items-center gap-2">
+          <Link to="/create" className="btn btn-primary btn-md">
             <FiPlus />
             Create Project
           </Link>
         </motion.div>
-      )}
-
-      {/* Quick Stats */}
-      {projects.length > 0 && (
-        <div className="mt-12 glass rounded-2xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Quick Stats</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-polygon-light">{projects.length}</div>
-              <div className="text-sm text-slate-500">Total Projects</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">
-                {projects.filter(p => p.isActive).length}
-              </div>
-              <div className="text-sm text-slate-500">Active</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">
-                {projects.reduce((sum, p) => sum + p.commitCount, 0)}
-              </div>
-              <div className="text-sm text-slate-500">Total Commits</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-amber-400">
-                {projects.reduce((sum, p) => sum + p.contributorCount, 0)}
-              </div>
-              <div className="text-sm text-slate-500">Total Contributors</div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

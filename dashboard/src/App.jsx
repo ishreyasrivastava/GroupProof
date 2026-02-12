@@ -5,29 +5,14 @@ import Home from './pages/Home';
 import Project from './pages/Project';
 import MyProjects from './pages/MyProjects';
 import CreateProject from './pages/CreateProject';
-import { CONTRACT_ADDRESS } from './utils/contract';
+import { CONTRACT_ADDRESS, getContractExplorerUrl } from './utils/contract';
 
 function App() {
-  const { isConnected } = useWallet();
-
-  if (!CONTRACT_ADDRESS) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass rounded-2xl p-8 max-w-md text-center">
-          <div className="text-6xl mb-4">⚙️</div>
-          <h1 className="text-2xl font-bold mb-2">Configuration Required</h1>
-          <p className="text-slate-400">
-            Contract address not set. Please configure <code className="hash">VITE_CONTRACT_ADDRESS</code> in your environment.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="container mx-auto px-4 py-8">
+      
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/project/:projectId" element={<Project />} />
@@ -35,25 +20,55 @@ function App() {
           <Route path="/create" element={<CreateProject />} />
         </Routes>
       </main>
-      <footer className="border-t border-slate-800 py-8 mt-16">
-        <div className="container mx-auto px-4 text-center text-slate-500">
-          <p className="mb-2">
-            Built with ❤️ by <span className="text-polygon-light">Shreya Srivastava</span>
-          </p>
-          <p className="text-sm">
-            Powered by Polygon • {' '}
+      
+      <Footer />
+    </div>
+  );
+}
+
+function Footer() {
+  const contractUrl = getContractExplorerUrl();
+  
+  return (
+    <footer className="border-t border-white/5 py-8 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="text-zinc-500 text-sm">
+            Built with ❤️ by{' '}
             <a 
-              href={`https://amoy.polygonscan.com/address/${CONTRACT_ADDRESS}`}
+              href="https://github.com/ishreyasrivastava"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-polygon-light hover:underline"
+              className="text-purple-400 hover:text-purple-300 transition-colors"
             >
-              View Contract
+              Shreya Srivastava
             </a>
-          </p>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-zinc-600">Powered by Polygon</span>
+            {contractUrl && (
+              <a 
+                href={contractUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-500 hover:text-purple-400 transition-colors"
+              >
+                View Contract
+              </a>
+            )}
+            <a 
+              href="https://github.com/ishreyasrivastava/GroupProof"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-500 hover:text-purple-400 transition-colors"
+            >
+              GitHub
+            </a>
+          </div>
         </div>
-      </footer>
-    </div>
+      </div>
+    </footer>
   );
 }
 
