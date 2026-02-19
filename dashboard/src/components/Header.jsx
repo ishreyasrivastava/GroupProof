@@ -58,17 +58,12 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <motion.div 
-                className="w-9 h-9 rounded-xl bg-gradient-to-br from-polygon-purple to-purple-500 flex items-center justify-center shadow-lg shadow-polygon-purple/20"
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                whileTap={{ scale: 0.95 }}
-              >
+            <Link to="/" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-polygon-purple flex items-center justify-center">
                 <FiGitCommit className="text-white text-lg" />
-              </motion.div>
-              <span className="font-semibold text-lg hidden sm:block">
-                <span className="text-gradient">Group</span>
-                <span className="text-white">Proof</span>
+              </div>
+              <span className="font-semibold text-lg hidden sm:block text-white">
+                GroupProof
               </span>
             </Link>
 

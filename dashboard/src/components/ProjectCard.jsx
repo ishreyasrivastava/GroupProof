@@ -96,14 +96,10 @@ export default function ProjectCard({ project, index = 0 }) {
             </span>
           </div>
           
-          <motion.div
-            className="flex items-center gap-1 text-zinc-500 group-hover:text-purple-400 transition-colors"
-            initial={{ x: 0 }}
-            whileHover={{ x: 4 }}
-          >
+          <div className="flex items-center gap-1 text-zinc-500 group-hover:text-purple-400 transition-colors">
             <span className="text-xs font-medium">View</span>
             <FiArrowRight className="text-sm" />
-          </motion.div>
+          </div>
         </div>
       </Link>
     </motion.div>
